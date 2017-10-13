@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, session, flash
-import re
+import re, md5
 # import the Connector function
 from mysqlconnection import MySQLConnector
 app = Flask(__name__)
@@ -12,10 +12,10 @@ emailREGEX = re.compile(r'^[a-zA-Z0-9.+_-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]+$')
 
 @app.route('/')
 def formPage():
-    if session['loginStatus']:
-        pass
-    else:
+    if 'loginStatus' not in session:
         session['loginStatus'] = False
+    else:
+        pass
     return render_template('index.html')
 
 @app.route('/submit', methods=['POST'])
@@ -25,6 +25,7 @@ def submitted():
     lastName = request.form['lastName']
     password = request.form['password']
     passwordC = request.form['passwordConfirm']
+    hashedPassword = md5.new(password).hexdigest()
     state = True
     if len(email) < 1 or len(firstName) < 1 or len(lastName) < 1 or len(password) < 1 or len(passwordC) < 1:
         flash("All field must be filled")
@@ -43,7 +44,7 @@ def submitted():
         state = False
     if state == True:
         flash("Successfully Submitted")
-        userData = {'email':email, 'first_name':firstName, 'last_name':lastName, 'password':password}
+        userData = {'email':email, 'first_name':firstName, 'last_name':lastName, 'password':hashedPassword}
         insertQuery = "INSERT INTO `regAndLogin`.`users` (`email`, `first_name`, `last_name`, `password`) VALUES (:email, :first_name, :last_name, :password);"
         mysql.query_db(insertQuery, userData)
         print "Success"
@@ -56,7 +57,8 @@ def submitted():
 def userlogin():
     email = request.form['email']
     password = request.form['password']
-    userInputData = {'email':email, 'password':password}
+    hashedPassword = md5.new(password).hexdigest()
+    userInputData = {'email':email, 'password':hashedPassword}
     loginQuery = "SELECT * FROM users WHERE email = :email AND password = :password"
     runQuery = mysql.query_db(loginQuery, userInputData)
     print runQuery
